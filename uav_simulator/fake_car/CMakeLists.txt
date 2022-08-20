@@ -14,10 +14,22 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs 
   geometry_msgs
+  message_generation
 )
 
+add_message_files(
+  FILES
+  IDodom.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  nav_msgs 
+)
+  
 catkin_package(
-  DEPENDS traj_opt traj_utils
+  CATKIN_DEPENDS message_runtime
 )
 
 include_directories(

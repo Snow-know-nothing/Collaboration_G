@@ -8,12 +8,14 @@
 #include <sensor_msgs/Joy.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
+#include "fake_car/IDodom.h"
 
 #define PI 3.14159265359
 using namespace std;
 
-ros::Publisher obs1_odom_pub_, traj_pub_, predicted_traj_pub_;
-double obs1_id_;
+ros::Publisher car_odom_pub_, traj_pub_, predicted_traj_pub_,odom_broadcast;
+ros::Timer broadcast_timer_;
+int car_id;
 double HEIGHT = 0.0;
 
 class moving_obstacle
@@ -56,7 +58,7 @@ public:
     yaw_rate = w;
   }
 
-  std::pair<Eigen::Vector2d, Eigen::Vector2d> update(const double acc, const double dir)
+  std::pair<Eigen::Vector2d, Eigen::Vector2d> update(const double vel, const double yaw_rate)
   {
     ros::Time t_now = ros::Time::now();
     if (t_last_update_ == ros::Time(0))
@@ -65,7 +67,7 @@ public:
     }
 
     double delta_t = (t_now - t_last_update_).toSec();
-    dyn_update(delta_t, acc, dir);
+    dyn_update(delta_t, vel, yaw_rate);
 
     t_last_update_ = t_now;
     return std::pair<Eigen::Vector2d, Eigen::Vector2d>(pos_, vel_);
@@ -87,7 +89,7 @@ public:
   }
 };
 
-moving_obstacle obs1_;
+moving_obstacle car_;
 
 // #      ^                ^
 // #    +1|              +4|
@@ -108,7 +110,7 @@ void joy_sub_cb(const sensor_msgs::Joy::ConstPtr &msg)
   if (acc2 < 0)
     dir2 = -dir2;
 
-  auto pv1 = obs1_.update(acc1, dir1);
+  auto pv1 = car_.update(acc1, dir1);
 
   //constexpr double HEIGHT = 1.0;
 
@@ -121,14 +123,14 @@ void joy_sub_cb(const sensor_msgs::Joy::ConstPtr &msg)
   odom_msg.pose.pose.orientation.x = 0.0;
   odom_msg.pose.pose.orientation.y = 0.0;
 
-  Eigen::Quaterniond q1(Eigen::AngleAxisd(obs1_.get_yaw(), Eigen::Vector3d::UnitZ()));
+  Eigen::Quaterniond q1(Eigen::AngleAxisd(car_.get_yaw(), Eigen::Vector3d::UnitZ()));
   odom_msg.pose.pose.position.x = pv1.first(0);
   odom_msg.pose.pose.position.y = pv1.first(1);
   odom_msg.twist.twist.linear.x = pv1.second(0);
   odom_msg.twist.twist.linear.y = pv1.second(1);
   odom_msg.pose.pose.orientation.w = q1.w();
   odom_msg.pose.pose.orientation.z = q1.z();
-  obs1_odom_pub_.publish(odom_msg);
+  car_odom_pub_.publish(odom_msg);
 
   // publish predicted trajectory
 
@@ -139,37 +141,55 @@ void key_sub_cb(const geometry_msgs::Twist::ConstPtr &msg)
   double v = msg->linear.x;
   double w = msg->angular.z;
 
-  auto pv1 = obs1_.update(v,w);
-
-  //constexpr double HEIGHT = 1.0;
+  auto pv1 = car_.update(v,w);
 }
 
-  void pubOdom()
-  {	
+void pubOdom()
+{	
+  ros::Time t_now = ros::Time::now();
+  //constexpr double HEIGHT = 1.0;
+  // publish odometry
+  nav_msgs::Odometry odom_msg;
+  odom_msg.header.stamp = t_now;
+  odom_msg.header.frame_id = "world";
+  odom_msg.pose.pose.position.z = HEIGHT;
+  odom_msg.twist.twist.linear.z = 0.0;
+  odom_msg.pose.pose.orientation.x = 0.0;
+  odom_msg.pose.pose.orientation.y = 0.0;
 
-    ros::Time t_now = ros::Time::now();
-    //constexpr double HEIGHT = 1.0;
-    // publish odometry
-    nav_msgs::Odometry odom_msg;
-    odom_msg.header.stamp = t_now;
-    odom_msg.header.frame_id = "world";
-    odom_msg.pose.pose.position.z = HEIGHT;
-    odom_msg.twist.twist.linear.z = 0.0;
-    odom_msg.pose.pose.orientation.x = 0.0;
-    odom_msg.pose.pose.orientation.y = 0.0;
+  Eigen::Quaterniond q1(Eigen::AngleAxisd(car_.yaw_, Eigen::Vector3d::UnitZ()));
+  odom_msg.pose.pose.position.x = car_.pos_(0);
+  odom_msg.pose.pose.position.y = car_.pos_(1);
+  odom_msg.twist.twist.linear.x = car_.vel_(0);
+  odom_msg.twist.twist.linear.y = car_.vel_(1);
+  odom_msg.pose.pose.orientation.w = q1.w();
+  odom_msg.pose.pose.orientation.z = q1.z();
 
-    Eigen::Quaterniond q1(Eigen::AngleAxisd(obs1_.yaw_, Eigen::Vector3d::UnitZ()));
-    odom_msg.pose.pose.position.x = obs1_.pos_(0);
-    odom_msg.pose.pose.position.y = obs1_.pos_(1);
-    odom_msg.twist.twist.linear.x = obs1_.vel_(0);
-    odom_msg.twist.twist.linear.y = obs1_.vel_(1);
-    odom_msg.pose.pose.orientation.w = q1.w();
-    odom_msg.pose.pose.orientation.z = q1.z();
+  car_odom_pub_.publish(odom_msg);
+}
 
-    obs1_odom_pub_.publish(odom_msg);
-    // publish predicted trajectory
-  }
+void odom_broadcastCallback(const ros::TimerEvent &e)
+{
+  ros::Time t_now = ros::Time::now();
+  fake_car::IDodom idodom;
+  idodom.id = car_id;
+  idodom.odom.header.stamp = t_now;
+  idodom.odom.header.frame_id = "world";
+  idodom.odom.pose.pose.position.z = HEIGHT;
+  idodom.odom.twist.twist.linear.z = 0.0;
+  idodom.odom.pose.pose.orientation.x = 0.0;
+  idodom.odom.pose.pose.orientation.y = 0.0;
 
+  Eigen::Quaterniond q1(Eigen::AngleAxisd(car_.yaw_, Eigen::Vector3d::UnitZ()));
+  idodom.odom.pose.pose.position.x = car_.pos_(0);
+  idodom.odom.pose.pose.position.y = car_.pos_(1);
+  idodom.odom.twist.twist.linear.x = car_.vel_(0);
+  idodom.odom.twist.twist.linear.y = car_.vel_(1);
+  idodom.odom.pose.pose.orientation.w = q1.w();
+  idodom.odom.pose.pose.orientation.z = q1.z();
+
+  odom_broadcast.publish(idodom);
+}
 
 
 int main(int argc, char **argv)
@@ -182,15 +202,18 @@ int main(int argc, char **argv)
 
   nh.param("init_x", init_x,  0.0);
   nh.param("init_y", init_y,  0.0);
+  nh.param("id", car_id,  -1);
+  //nh.getParam("height", HEIGHT);
+ 
+  broadcast_timer_ = nh.createTimer(ros::Duration(0.08), &odom_broadcastCallback);
 
-
-  obs1_odom_pub_ = nh.advertise<nav_msgs::Odometry>("odom_car", 10);
+  car_odom_pub_ = nh.advertise<nav_msgs::Odometry>("odom_car", 10);
+  odom_broadcast = nh.advertise<fake_car::IDodom>("/broadcast_odom", 10);
 
   ros::Subscriber joy_sub = nh.subscribe<sensor_msgs::Joy>("joy", 10, joy_sub_cb);
   ros::Subscriber key_sub = nh.subscribe<geometry_msgs::Twist>("cmd_vel", 10, key_sub_cb);
-  obs1_.set_position(Eigen::Vector2d(init_x, init_y));
-  //nh.getParam("height", HEIGHT);
- 
+
+  car_.set_position(Eigen::Vector2d(init_x, init_y));
 
   while (ros::ok())
   {

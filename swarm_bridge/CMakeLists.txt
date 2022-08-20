@@ -15,11 +15,12 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   sensor_msgs
+  traj_utils
   #custom_msgs
 )
 
 catkin_package(
-
+  CATKIN_DEPENDS traj_utils
 )
 
 include_directories(
@@ -29,10 +30,10 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
 )
 
-add_executable(bridge_udp_node
-  src/bridge_udp_node.cpp 
+add_executable(bridge_node_udp
+  src/bridge_node_udp.cpp 
   )
-target_link_libraries(bridge_udp_node 
+target_link_libraries(bridge_node_udp
   ${catkin_LIBRARIES}
   )
 

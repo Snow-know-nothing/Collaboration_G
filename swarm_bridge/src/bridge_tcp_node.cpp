@@ -16,14 +16,16 @@ bool topic_send_way_; //false single, true together
 std::vector<ros::Publisher> imu_pub_;
 std::vector<ros::Publisher> other_camera_detect_msg_pub_; 
 std::vector<ros::Publisher> map_pub_; 
+std::vector<ros::Publisher> odom_pub_; 
 ros::Publisher all_other_imu_pub_;
 ros::Publisher all_other_camera_detect_msg_pub_;
 ros::Publisher all_other_map_pub_;
+ros::Publisher all_other_odom_pub_;
 
 
 std::vector<int> id_list_;
 std::vector<std::string> ip_list_;
-ros::Subscriber imu_sub_, camera_detect_xyz_sub_,map_sub_;
+ros::Subscriber imu_sub_, camera_detect_xyz_sub_,map_sub_,odom_sub_;
 
 
 int self_id_;
@@ -163,6 +165,26 @@ void map_sub_tcp_callback(const sensor_msgs::PointCloud2ConstPtr &msg)
   send_to_all_groundstation_except_me("/map",map_msg);// Only send to ground stations.
 }
 
+void odom_sub_tcp_callback(const nav_msgs::OdometryConstPtr &msg)
+{
+  nav_msgs::Odometry odom_msg = *msg;
+  double t = odom_msg.header.stamp.toSec();
+  odom_msg.header.stamp = ros::Time().fromSec(t - delta_time_);
+  static ros::Time t_last;
+  ros::Time t_now = ros::Time::now();
+  if ((t_now - t_last).toSec() * broadcast_freq_ < 1.0)
+  {
+    return;
+  }
+  t_last = t_now;
+
+  odom_msg.header.frame_id = std::string("device_") + std::to_string(self_id_);
+
+  // other_odoms_pub_.publish(odom_msg); // send to myself
+  send_to_all_device_except_me("/odom",odom_msg);// Only send to devices.
+  send_to_all_groundstation_except_me("/odom",odom_msg);// Only send to ground stations.
+}
+
 // void camera_dedtect_xyz_sub_tcp_callback(const custom_msgs::cloud_xyzConstPtr &msg)
 // {
 //   custom_msgs::cloud_xyz xyz_msg = *msg;
@@ -243,6 +265,30 @@ void map_bridge_callback(int ID, ros::SerializedMessage& m)
 
 // }
 
+void odom_bridge_callback(int ID, ros::SerializedMessage& m)
+{
+
+  //这里的ID和下面的recv_device_id是一样的，抓要是由于每个线程监视一个ip，每个ip和设备是绑定的。
+  nav_msgs::Odometry odom_msg;
+  ros::serialization::deserializeMessage(m,odom_msg);
+  odom_msg.header.stamp = ros::Time().fromSec(odom_msg.header.stamp.toSec() + delta_time_);
+  int recv_device_id = remap_frome_frameid_to_id(odom_msg.header.frame_id);
+  std::cout << "check if odom ID equal to recv_device_id" << std::endl;
+  std::cout << "ID is " << ID << std::endl;
+  std::cout << "recv_device_id " << recv_device_id << std::endl;
+  if(recv_device_id < 0 || recv_device_id >= device_num_)
+  {
+    ROS_ERROR("Frame ID ERROE(4)");
+    return;
+  }
+  if(topic_send_way_)
+  {
+    all_other_odom_pub_.publish(odom_msg);
+    return;
+  }
+  odom_pub_[recv_device_id].publish(odom_msg);
+}
+
 
 
 int main(int argc, char **argv)
@@ -279,26 +325,30 @@ int main(int argc, char **argv)
   ros::Subscriber delta_time_sub = nh.subscribe("/delta_time_topic", 1, delta_time_callback);
   imu_sub_ = nh.subscribe<sensor_msgs::Imu>("/imu_topic", 10, imu_sub_tcp_callback, ros::TransportHints().tcpNoDelay());
   map_sub_  = nh.subscribe<sensor_msgs::PointCloud2>("/lio_sam/mapping/map_global", 10,map_sub_tcp_callback, ros::TransportHints().tcpNoDelay());
-
+  odom_sub_ = nh.subscribe<nav_msgs::Odometry>("/lio_sam/mapping/odometry", 10,odom_sub_tcp_callback, ros::TransportHints().tcpNoDelay());
   //camera_detect_xyz_sub_ = nh.subscribe<custom_msgs::cloud_xyz>("/cloud_xyz_topic", 10, camera_dedtect_xyz_sub_tcp_callback, ros::TransportHints().tcpNoDelay());
   all_other_imu_pub_ = nh.advertise<sensor_msgs::Imu>("/other_device_imu", 1);
   //all_other_camera_detect_msg_pub_ = nh.advertise<custom_msgs::cloud_xyz>("/other_camera_detect_xyz", 1);
   all_other_map_pub_ = nh.advertise<sensor_msgs::PointCloud2>("/other_device_map", 1);
+  all_other_odom_pub_ = nh.advertise<nav_msgs::Odometry>("/other_device_odom", 1);
 
   std::string topic_head;
   topic_head = "";
   imu_pub_.resize(device_num_);
   other_camera_detect_msg_pub_.resize(device_num_);
   map_pub_.resize(device_num_);
+  odom_pub_.resize(device_num_);
   for(int i = 0; i < device_num_;++i)
   {
-    std::string imu_topic, other_camera_msg_topic, map_topic;
+    std::string imu_topic, other_camera_msg_topic, map_topic,odom_topic;
     imu_topic = topic_head + "/imu" + std::to_string(i) + "_topic"; 
     //other_camera_msg_topic = topic_head + "/camera" + std::to_string(i) + "_detect_points_topic";
     map_topic =  topic_head + "/map" + std::to_string(i) + "_topic"; 
+    odom_topic =  topic_head + "/odom" + std::to_string(i) + "_topic"; 
     imu_pub_[i] = nh.advertise<sensor_msgs::Imu>(imu_topic, 1);
     //other_camera_detect_msg_pub_[i] = nh.advertise<custom_msgs::cloud_xyz>(other_camera_msg_topic, 1);
     map_pub_[i] =  nh.advertise<sensor_msgs::PointCloud2>(map_topic, 1);
+    odom_pub_[i] = nh.advertise<nav_msgs::Odometry>(odom_topic, 1);
   }
   //initalize the bridge 
   bridge.reset(new ReliableBridge(self_id_in_bridge_,ip_list_,id_list_,100000));    
@@ -306,6 +356,7 @@ int main(int argc, char **argv)
   register_callbak_to_all_devices("/imu", imu_bridge_callback);
  // register_callbak_to_all_devices("/camera_detect_xyz", camera_detect_xyz_bridge_callback);
   register_callbak_to_all_devices("/map", map_bridge_callback);
+  register_callbak_to_all_devices("/odom", odom_bridge_callback);
 
   ros::spin();
   bridge->StopThread();

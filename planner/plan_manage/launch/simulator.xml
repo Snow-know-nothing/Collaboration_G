@@ -11,6 +11,7 @@
   <arg name="min_dist"/>
   <arg name="odometry_topic"/>
   <arg name="drone_id"/>
+  <arg name="localsim" default="true"/>
 
   <!-- There are two kinds of maps you can choose, just comment out the one you don’t need like the follow. Have a try. /-->
 
@@ -103,13 +104,16 @@
         <param name="gains/ang/z" value="0.1"/>        
   </node>   -->
 
- <node pkg="fake_car" name="fake_car$(arg drone_id)" type="fake_car" output="screen">
-    <!-- <param name="car_id" value="24"/> -->
-    <param name="init_x" value="$(arg init_x_)"/>
-    <param name="init_y" value="$(arg init_y_)"/>
-    <remap from="~cmd_vel" to="drone_$(arg drone_id)_planning/pos_cmd"/>
-    <remap from="~odom_car" to="drone_$(arg drone_id)_$(arg odometry_topic)"/>
-  </node>
+ <group if="$(arg localsim)">
+    <node pkg="fake_car" name="fake_car$(arg drone_id)" type="fake_car" output="screen">
+      <param name="init_x" value="$(arg init_x_)"/>
+      <param name="init_y" value="$(arg init_y_)"/>
+      <param name="id" value="$(arg drone_id)"/>
+      <remap from="~cmd_vel" to="drone_$(arg drone_id)_planning/pos_cmd"/>
+      <remap from="~odom_car" to="drone_$(arg drone_id)_$(arg odometry_topic)"/>
+    </node>
+  </group>
+
  
   <node pkg="odom_visualization" name="drone_$(arg drone_id)_odom_visualization" type="odom_visualization" output="screen">
     <remap from="~odom" to="drone_$(arg drone_id)_$(arg odometry_topic)"/>
@@ -125,20 +129,22 @@
     <param name="tf45" value="false"/>
     <param name="drone_id" value="20"/>
   </node>
+  
+  <group if="$(arg localsim)">
+    <node pkg="local_sensing_node" type="pcl_render_node" name="drone_$(arg drone_id)_pcl_render_node" output="screen">
+      <rosparam command="load" file="$(find local_sensing_node)/params/camera.yaml" />
+      <param name="sensing_horizon"  value="5.0" />
+      <param name="sensing_rate"     value="30.0"/>
+      <param name="estimation_rate"  value="30.0"/>
 
-  <node pkg="local_sensing_node" type="pcl_render_node" name="drone_$(arg drone_id)_pcl_render_node" output="screen">
-        <rosparam command="load" file="$(find local_sensing_node)/params/camera.yaml" />
-        <param name="sensing_horizon"  value="5.0" />
-        <param name="sensing_rate"     value="30.0"/>
-        <param name="estimation_rate"  value="30.0"/>
+      <param name="map/x_size"     value="$(arg map_size_x_)"/>
+      <param name="map/y_size"     value="$(arg map_size_y_)"/>
+      <param name="map/z_size"     value="$(arg map_size_z_)"/>
 
-        <param name="map/x_size"     value="$(arg map_size_x_)"/>
-        <param name="map/y_size"     value="$(arg map_size_y_)"/>
-        <param name="map/z_size"     value="$(arg map_size_z_)"/>
-
-        <remap from="~global_map" to="/map_generator/global_cloud"/>
-        <remap from="~odometry"   to="/drone_$(arg drone_id)_$(arg odometry_topic)"/>
-        <remap from="~pcl_render_node/cloud"   to="/drone_$(arg drone_id)_pcl_render_node/cloud"/>
-  </node>
+      <remap from="~global_map" to="/map_generator/global_cloud"/>
+      <remap from="~odometry"   to="/drone_$(arg drone_id)_$(arg odometry_topic)"/>
+      <remap from="~pcl_render_node/cloud"   to="/drone_$(arg drone_id)_pcl_render_node/cloud"/>
+    </node>
+  </group>
 
 </launch>

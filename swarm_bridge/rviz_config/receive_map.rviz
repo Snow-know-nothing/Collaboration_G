@@ -6,9 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /PointCloud21
-        - /PointCloud22
-        - /PointCloud22/Status1
+        - /receivemap(device_0)1/Status1
       Splitter Ratio: 0.5
     Tree Height: 546
   - Class: rviz/Selection
@@ -67,11 +65,11 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: AxisColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: PointCloud2
+      Name: receivemap(device_0)
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
@@ -82,12 +80,12 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 1.75
-        Min Value: -0.44999998807907104
+        Max Value: 1.7400000095367432
+        Min Value: 0.03999999910593033
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -99,14 +97,14 @@ Visualization Manager:
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: PointCloud2
+      Name: wholemap
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.10000000149011612
       Style: Flat Squares
-      Topic: /device_0_map
+      Topic: /drone_0_ego_planner_node/grid_map/occupancy_inflate
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -115,7 +113,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: device_0
+    Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
@@ -139,25 +137,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 125.69285583496094
+      Distance: 121.88566589355469
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Field of View: 0.7853981852531433
       Focal Point:
-        X: 53.59172821044922
-        Y: -54.57248306274414
-        Z: 10.008384704589844
+        X: 40.9299430847168
+        Y: -31.572023391723633
+        Z: -13.660120964050293
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.37479737401008606
+      Pitch: 0.7397968769073486
       Target Frame: <Fixed Frame>
-      Yaw: 1.8703950643539429
+      Value: Orbit (rviz)
+      Yaw: 1.740390419960022
     Saved: ~
 Window Geometry:
   Displays:
@@ -175,5 +173,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1267
-  X: 154
-  Y: 51
+  X: 274
+  Y: 138

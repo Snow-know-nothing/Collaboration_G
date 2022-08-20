@@ -58,6 +58,7 @@ namespace ego_planner
     broadcast_bspline_pub_ = nh.advertise<traj_utils::Bspline>("planning/broadcast_bspline_from_planner", 10);
     broadcast_bspline_sub_ = nh.subscribe("planning/broadcast_bspline_to_planner", 100, &EGOReplanFSM::BroadcastBsplineCallback, this, ros::TransportHints().tcpNoDelay());
   
+    broadcast_odom_sub_ = nh.subscribe("/broadcast_odom", 100, &EGOReplanFSM::BroadcastOdomCallback, this, ros::TransportHints().tcpNoDelay());
   //发布给traj_server
     bspline_pub_ = nh.advertise<traj_utils::Bspline>("planning/bspline", 10);
     data_disp_pub_ = nh.advertise<traj_utils::DataDisp>("planning/data_display", 100);
@@ -243,6 +244,52 @@ namespace ego_planner
     odom_orient_.z() = msg->pose.pose.orientation.z;
 
     have_odom_ = true;//car 2
+  }
+
+  void EGOReplanFSM::BroadcastOdomCallback(const fake_car::IDodomPtr &msg)
+  {
+    //cout<<"here"<<endl;
+    
+    int id = msg->id;
+    if (id == planner_manager_->pp_.drone_id)
+      return;
+
+    if (abs((ros::Time::now() - msg->odom.header.stamp).toSec()) > 0.25)
+    {
+      ROS_ERROR("Time difference of odom is too large! Local - Remote Agent %d = %fs",
+                msg->id, (ros::Time::now() - msg->odom.header.stamp).toSec());
+      return;
+    }
+    
+    if (planner_manager_->swarm_odoms_buf_.size() <= id)
+    {
+      for (size_t i = planner_manager_->swarm_odoms_buf_.size(); i <= id; i++)
+      {
+        OneIDodomOfSwarm blank;
+        blank.drone_id = -1;
+        planner_manager_->swarm_odoms_buf_.push_back(blank);
+      }
+    }
+    planner_manager_->swarm_odoms_buf_[id].drone_id = id;
+    planner_manager_->swarm_odoms_buf_[id].pose(0) = msg->odom.pose.pose.position.x;
+    planner_manager_->swarm_odoms_buf_[id].pose(1) = msg->odom.pose.pose.position.y;
+    planner_manager_->swarm_odoms_buf_[id].pose(2) = odom_pos_(2);
+    if(exec_state_ == EXEC_TRAJ)
+    {
+      if((planner_manager_->swarm_odoms_buf_[id].pose-odom_pos_).norm() < 0.8)
+      {
+        changeFSMExecState(EMERGENCY_STOP, "ODOM_CHECK");
+        // cout<<"happened"<<endl;
+      }
+      else
+      {
+        // cout<<"not happened"<<endl;
+      }
+    }
+    else
+    {
+      // cout<<"other condition"<<endl;
+    }
   }
 
   void EGOReplanFSM::BroadcastBsplineCallback(const traj_utils::BsplinePtr &msg)
@@ -491,7 +538,7 @@ namespace ego_planner
           {
             changeFSMExecState(EXEC_TRAJ, "FSM");
 
-            publishSwarmTrajs(true);
+            publishSwarmTrajs(false);
           }
           else
           {
@@ -563,7 +610,7 @@ namespace ego_planner
         wp_id_++;
         planNextWaypoint(wps_[wp_id_]);
       }
-      else if ((local_target_pt_ - end_pt_).norm() < 1e-3) // close to the global target
+      else if ((local_target_pt_ - end_pt_).norm() < 1e-3) // close to the local target
       {
         if (t_cur > info->duration_ - 1e-2)      //当前局部轨迹的执行时间已经超过了局部轨迹预计的执行时间，
         {    

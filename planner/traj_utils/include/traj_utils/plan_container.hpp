@@ -227,6 +227,14 @@ namespace ego_planner
   };
 
   typedef std::vector<OneTrajDataOfSwarm> SwarmTrajData;
+  
+  struct OneIDodomOfSwarm
+  {
+    /* info of generated traj */
+    int drone_id;
+    Eigen::Vector3d pose;
+  };
+  typedef std::vector<OneIDodomOfSwarm> SwarmOdomData;
 
 } // namespace ego_planner
 

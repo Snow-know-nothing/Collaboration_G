@@ -50,13 +50,16 @@
     <remap from="~planning/bspline" to = "/drone_$(arg drone_id)_planning/bspline"/>
     <remap from="~planning/data_display" to = "/drone_$(arg drone_id)_planning/data_display"/>
     <remap from="~planning/broadcast_bspline_from_planner" to = "/broadcast_bspline"/>
-    <remap from="~planning/broadcast_bspline_to_planner" to = "/broadcast_bspline"/>
+    <remap from="~planning/broadcast_bspline_to_planner" to = "/broadcast_bspline2"/>
 
     <remap from="~grid_map/odom" to="/drone_$(arg drone_id)_$(arg odometry_topic)"/>
     <remap from="~grid_map/cloud" to="/drone_$(arg drone_id)_$(arg cloud_topic)"/>
     <remap from="~grid_map/pose"   to = "/drone_$(arg drone_id)_$(arg camera_pose_topic)"/> 
     <remap from="~grid_map/depth" to = "/drone_$(arg drone_id)_$(arg depth_topic)"/>
     
+    <!-- receive tcp -->
+    <remap from="~grid_map/occuinflateRecv" to="/map0_topic"/>
+
 
     <!-- planning fsm -->
     <param name="fsm/flight_type" value="$(arg flight_type)" type="int"/>
@@ -140,7 +143,7 @@
     <param name="optimization/lambda_fitness" value="1.0" type="double"/>
     <param name="optimization/lambda_limitz" value="100000.0" type="double"/>
 
-    <param name="optimization/dist0" value="0.5" type="double"/>
+    <param name="optimization/dist0" value="0.8" type="double"/>
     <param name="optimization/swarm_clearance" value="0.8" type="double"/>
     <param name="optimization/max_vel" value="$(arg max_vel)" type="double"/>
     <param name="optimization/max_acc" value="$(arg max_acc)" type="double"/>

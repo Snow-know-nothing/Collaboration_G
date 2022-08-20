@@ -133,11 +133,15 @@ void GridMap::initMap(ros::NodeHandle &nh)
   indep_odom_sub_ =
       node_.subscribe<nav_msgs::Odometry>("grid_map/odom", 10, &GridMap::odomCallback, this);
 
+  occ_inflate_sub_ =
+      node_.subscribe<sensor_msgs::PointCloud2>("grid_map/occuinflateRecv", 10, &GridMap::occuinflateRecvCallback, this);
+
   occ_timer_ = node_.createTimer(ros::Duration(0.05), &GridMap::updateOccupancyCallback, this);
   vis_timer_ = node_.createTimer(ros::Duration(0.11), &GridMap::visCallback, this);
 
   map_pub_ = node_.advertise<sensor_msgs::PointCloud2>("grid_map/occupancy", 10);
   map_inf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("grid_map/occupancy_inflate", 10);
+
 
   md_.occ_need_update_ = false;
   md_.local_updated_ = false;
@@ -861,6 +865,31 @@ void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
       }
   }
 }
+
+void GridMap::occuinflateRecvCallback(const sensor_msgs::PointCloud2ConstPtr &img)
+{
+  pcl::PointCloud<pcl::PointXYZ> cloud;
+  pcl::fromROSMsg(*img,  cloud);
+  static double last_time;
+  for (const auto&pt:cloud)
+  {
+    Eigen::Vector3i  index;
+    posToIndex(Eigen::Vector3d(pt.x, pt.y, pt.z), index);
+    md_.local_bound_min_(0)= min(md_.local_bound_min_(0),index(0));
+    md_.local_bound_min_(1)= min(md_.local_bound_min_(1),index(1));
+    md_.local_bound_min_(2)= min(md_.local_bound_min_(2),index(2));
+    
+    md_.local_bound_max_(0)= max(md_.local_bound_max_(0),index(0));
+    md_.local_bound_max_(1)= max(md_.local_bound_max_(1),index(1));
+    md_.local_bound_max_(2)= max(md_.local_bound_max_(2),index(2));
+    boundIndex(index);
+    md_.occupancy_buffer_inflate_[toAddress(index(0),index(1), index(2))] = 1; 
+  }
+  double time = ros::Time::now().toSec();
+  std::cout<<"---timepass---"<<time-last_time<<"---"<<std::endl;
+  last_time = time;
+}
+
 
 void GridMap::publishMap()
 {

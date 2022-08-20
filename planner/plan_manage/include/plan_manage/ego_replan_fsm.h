@@ -17,6 +17,7 @@
 #include <traj_utils/MultiBsplines.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <traj_utils/DataDisp.h>
+#include <fake_car/IDodom.h>
 #include <plan_manage/planner_manager.h>
 #include <traj_utils/planning_visualization.h>
 
@@ -82,7 +83,7 @@ namespace ego_planner
     /* ROS utils */
     ros::NodeHandle node_;
     ros::Timer exec_timer_, safety_timer_;
-    ros::Subscriber waypoint_sub_, odom_sub_, swarm_trajs_sub_, broadcast_bspline_sub_, trigger_sub_;
+    ros::Subscriber waypoint_sub_, odom_sub_, swarm_trajs_sub_, broadcast_bspline_sub_,broadcast_odom_sub_,trigger_sub_;
     ros::Publisher replan_pub_, new_pub_, bspline_pub_, data_disp_pub_, swarm_trajs_pub_, broadcast_bspline_pub_;
 
     /* helper functions */
@@ -108,6 +109,7 @@ namespace ego_planner
     void odometryCallback(const nav_msgs::OdometryConstPtr &msg);
     void swarmTrajsCallback(const traj_utils::MultiBsplinesPtr &msg);
     void BroadcastBsplineCallback(const traj_utils::BsplinePtr &msg);
+    void BroadcastOdomCallback(const fake_car::IDodomPtr &msg);
 
     bool checkCollision();
     void publishSwarmTrajs(bool startup_pub);

@@ -53,6 +53,7 @@ namespace ego_planner
     GridMap::Ptr grid_map_;
     fast_planner::ObjPredictor::Ptr obj_predictor_;    
     SwarmTrajData swarm_trajs_buf_;
+    SwarmOdomData swarm_odoms_buf_;
 
   private:
     /* main planning algorithms & modules */

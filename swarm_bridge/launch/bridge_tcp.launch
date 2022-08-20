@@ -11,8 +11,8 @@
     <param name="max_freq" value="1000"/>
     <param name="device_num" value="$(arg device_num)"/>
     <param name="topic_send_way" value="$(arg topic_send_way)"/>
-    <param name="device_ip_0" value="192.168.50.218" type="string"/>
-    <param name="device_ip_1" value="192.168.50.24" type="string"/>
+    <param name="device_ip_0" value="192.168.0.179" type="string"/>
+    <param name="device_ip_1" value="192.168.0.172" type="string"/>
     <param name="device_ip_2" value="127.0.0.1" type="string"/>
     <param name="device_ip_3" value="127.0.0.1" type="string"/>
     <param name="device_ip_4" value="127.0.0.1" type="string"/>

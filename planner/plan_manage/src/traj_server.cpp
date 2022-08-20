@@ -72,15 +72,6 @@ void bsplineCallback(traj_utils::BsplineConstPtr msg)
   UniformBspline pos_traj(pos_pts, msg->order, 0.1);
   pos_traj.setKnot(knots);
 
-  // parse yaw traj
-
-  // Eigen::MatrixXd yaw_pts(msg->yaw_pts.size(), 1);
-  // for (int i = 0; i < msg->yaw_pts.size(); ++i) {
-  //   yaw_pts(i, 0) = msg->yaw_pts[i];
-  // }
-
-  //UniformBspline yaw_traj(yaw_pts, msg->order, msg->yaw_dt);
-
   start_time_ = true_start_time_ = msg->start_time;
   time_cost = 0;
 
@@ -95,13 +86,6 @@ void bsplineCallback(traj_utils::BsplineConstPtr msg)
   receive_traj_ = true;
   end_flag = false;
   back_flag = false;
-  // double t_temp = 0.0, dt=0.1;
-  // while(t_temp<traj_duration_&&(now_pos-traj_[0].evaluateDeBoorT(t_temp)).norm()>0.1)
-  // {
-  //   t_temp += dt;
-  //   start_time_ = start_time_ - ros::Duration(dt);
-  // }
-  //true_start_time_ = start_time_;
 }
 
 void cmdCallback(const ros::TimerEvent &e)
@@ -123,7 +107,7 @@ void cmdCallback(const ros::TimerEvent &e)
    time_last = ros::Time::now();
 
   Eigen::Vector3d pos(Eigen::Vector3d::Zero()), vel(Eigen::Vector3d::Zero());
-  if((now_pos -traj_[0].evaluateDeBoorT(traj_duration_)).norm() < 0.1)
+  if((now_pos -traj_[0].evaluateDeBoorT(traj_duration_)).norm() < 0.01)
   {
     speed = 0.0;
     steer=0.0;
@@ -139,7 +123,7 @@ void cmdCallback(const ros::TimerEvent &e)
       double v_temp = vel .norm();
       Eigen::Vector3d dir = t_cur + time_forward_ <= traj_duration_ ? traj_[0].evaluateDeBoorT(t_cur + time_forward_) - now_pos : traj_[0].evaluateDeBoorT(traj_duration_) - now_pos;
 
-      if(dir.dot(traj_[1].evaluateDeBoorT(t_cur))<0)//超前了
+      if(dir.dot(traj_[1].evaluateDeBoorT(t_cur))<0)//超前了//maybe also match the delay
       {
         speed = 0.0;
         steer = 0.0;
@@ -207,7 +191,7 @@ void cmdCallback(const ros::TimerEvent &e)
       if((traj_[0].evaluateDeBoorT(traj_duration_)-now_pos).dot(traj_[1].evaluateDeBoorT(traj_duration_-time_forward_))>0.1)//还在朝者这个方向走
       {
         speed = traj_[1].evaluateDeBoorT(traj_duration_).norm();
-        cout <<"speed still" <<speed<< endl;
+        //cout <<"speed still" <<speed<< endl;
       }
       else 
       {
